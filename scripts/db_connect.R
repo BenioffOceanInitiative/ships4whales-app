@@ -10,7 +10,19 @@ dir_gdata <- case_when(
   loc_usr == "mvisalli" ~ "TODO",
   loc_usr == "seang" ~ "TODO")
 
-db_yml <- file.path(dir_gdata, "heroku_db.yml")
+# create database ----
+# psql -h database-1.cbh6z8ln2pdp.us-west-2.rds.amazonaws.com -U postgres
+#
+# postgres=> CREATE DATABASE ships4whales;
+# CREATE DATABASE
+# postgres=> CREATE EXTENSION postgis;
+# ERROR:  extension "postgis" already exists
+# postgres=> CREATE EXTENSION postgis_topology;
+# ERROR:  extension "postgis_topology" already exists
+# postgres=> CREATE EXTENSION pgrouting;
+
+# connect ----
+db_yml <- file.path(dir_gdata, "amazon_rds.yml")
 db <- yaml.load_file(db_yml)
 
 con <- dbConnect(
@@ -21,3 +33,5 @@ con <- dbConnect(
   user     = db$user,
   password = db$password,
   sslmode  = 'require')
+
+# dbListTables(con)
