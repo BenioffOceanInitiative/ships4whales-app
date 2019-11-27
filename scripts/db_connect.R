@@ -8,7 +8,7 @@ loc_usr <- Sys.info()[['user']]
 dir_gdata <- case_when(
   loc_usr == "bbest" ~ "/Volumes/GoogleDrive/My Drive/projects/ship-strike/data",
   loc_usr == "mvisalli" ~ "TODO",
-  loc_usr == "seang" ~ "TODO")
+  loc_usr == "seang" ~ "/Volumes/GoogleDrive/My Drive/ship-strike/data")
 
 # create database ----
 # psql -h database-1.cbh6z8ln2pdp.us-west-2.rds.amazonaws.com -U postgres
@@ -34,4 +34,5 @@ con <- dbConnect(
   password = db$password,
   sslmode  = 'require')
 
-# dbListTables(con)
+ #dbListTables(con)
+#test = dbGetQuery(con, 'select count(*) from ais_data')
