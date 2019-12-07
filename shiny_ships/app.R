@@ -1,3 +1,4 @@
+# libraries ----
 library(tidyverse)
 library(leaflet)
 library(RColorBrewer)
@@ -16,11 +17,16 @@ library(RPostgreSQL)
 library(dbplyr)
 library(lubridate)
 library(units)
+library(here)
 
-df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat from ais_data WHERE datetime >= '2019-11-01'")
+# db con ----
+source(here("scripts/db_connect.R"))
 
-df=df_postgres[order(df_postgres$datetime, df_postgres$name),]
+# vars ----
+dir_cache <- here("cache")
+tmp_rdata <- file.path(dir_cache, "tmp.Rdata")
 
+# functions ----
 get_length_km <- function(segment){
   # seg <- p$segment[2]
   if (is.na(segment)) return(NA)
@@ -39,41 +45,54 @@ get_segment <- function(p1, p2, crs=4326){
     st_set_crs(crs)
 }
 
-df$speed = as.numeric(df$speed)
+# pre-process ----
+dir.create(dir_cache, showWarnings = F)
 
-pts <- df %>%
-  # filter to single vessel
-  #filter(name == c("MSC AZOV","SEALAND GUAYAQUIL", "MILLENNIUMSTAR")) %>%
-  # convert to sf points tibble
-  st_as_sf(coords = c("lon", "lat"), crs=4326) %>%
-  # sort by datetime
-  arrange(name) %>%
-  # filter to only one point per minute to reduce weird speeds
-  filter(!duplicated(round_date(datetime, unit="minute"))) %>%
-  mutate(
-    # get segment based on previous point
-    seg      = map2(lag(geometry), geometry, get_segment),
-    seg_mins = (datetime - lag(datetime)) %>% as.double(units = "mins"),
-    seg_km   = map_dbl(seg, get_length_km),#giving warning
-    seg_kmhr = seg_km / (seg_mins / 60),
-    seg_new  = if_else(is.na(seg_mins) | seg_mins > 60, 1, 0),
-    #apply speed over ground to next segment
-    seg_sog = speed*1.852)
+if (!file.exists(tmp_rdata)){
+  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat from ais_data WHERE datetime >= '2019-11-01'")
+  
+  df=df_postgres[order(df_postgres$datetime, df_postgres$name),]
+  
+  
+  df$speed = as.numeric(df$speed)
+  
+  pts <- df %>%
+    # filter to single vessel
+    #filter(name == c("MSC AZOV","SEALAND GUAYAQUIL", "MILLENNIUMSTAR")) %>%
+    # convert to sf points tibble
+    st_as_sf(coords = c("lon", "lat"), crs=4326) %>%
+    # sort by datetime
+    arrange(name) %>%
+    # filter to only one point per minute to reduce weird speeds
+    filter(!duplicated(round_date(datetime, unit="minute"))) %>%
+    mutate(
+      # get segment based on previous point
+      seg      = map2(lag(geometry), geometry, get_segment),
+      seg_mins = (datetime - lag(datetime)) %>% as.double(units = "mins"),
+      seg_km   = map_dbl(seg, get_length_km),#giving warning
+      seg_kmhr = seg_km / (seg_mins / 60),
+      seg_new  = if_else(is.na(seg_mins) | seg_mins > 60, 1, 0),
+      #apply speed over ground to next segment
+      seg_sog = speed*1.852)
+  
+  
+  # setup lines
+  lns <- pts %>%
+    filter(seg_km <=100) %>%
+    filter(!is.na(seg_sog)) %>%
+    filter(seg_new == 0) %>%
+    #group_by(name) %>%
+    mutate(
+      seg_geom = map(seg, 1) %>% st_as_sfc(crs=4326)) %>%
+    st_set_geometry("seg_geom") 
+  
+  lns$seg_sog = as.numeric(lns$seg_sog)
+  
+  save(df, pts, lns, file = tmp_rdata)
+}
+load(tmp_rdata)
 
-
-# setup lines
-lns <- pts %>%
-  filter(seg_km <=100) %>%
-  filter(!is.na(seg_sog)) %>%
-  filter(seg_new == 0) %>%
-  #group_by(name) %>%
-  mutate(
-    seg_geom = map(seg, 1) %>% st_as_sfc(crs=4326)) %>%
-  st_set_geometry("seg_geom") 
-
-lns$seg_sog = as.numeric(lns$seg_sog)
-
-
+# ui ----
 ui <- dashboardPage(
   
   #setting up shiny dashboard layout  
@@ -119,7 +138,7 @@ ui <- dashboardPage(
   )
 )
 
-#Server is where reactivity occurs. connects widgets to data
+# server ----
 
 server <- function(input, output, session) {
   

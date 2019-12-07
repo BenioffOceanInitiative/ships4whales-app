@@ -34,5 +34,18 @@ con <- dbConnect(
   password = db$password,
   sslmode  = 'require')
 
- #dbListTables(con)
-#test = dbGetQuery(con, 'select count(*) from ais_data')
+# dbListTables(con)
+
+# dbGetQuery(con, 'select count(*) from ais_data')
+
+# ais <- tbl(con, "ais_data")
+# ais_ships <- ais %>% 
+#   group_by(name) %>% 
+#   summarize(
+#     n = n(),
+#     date_beg = min(datetime, na.rm=T),
+#     date_end = max(datetime, na.rm=T)) %>% 
+#   collect()
+# 2019-12-04:
+#   nrow(ais_ships)  #      4,823
+#   sum(ais_ships$n) # 51,271,029
