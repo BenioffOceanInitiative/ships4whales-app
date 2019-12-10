@@ -49,10 +49,11 @@ get_segment <- function(p1, p2, crs=4326){
 dir.create(dir_cache, showWarnings = F)
 
 if (!file.exists(tmp_rdata)){
-  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat from ais_data WHERE datetime >= '2019-11-01'")
-  
+  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat from ais_data WHERE datetime > '2018-11-01'")
+
   df=df_postgres[order(df_postgres$datetime, df_postgres$name),]
   
+  df =df[!(is.na(df$lon) | df$lon=="NULL" | is.na(df$lat) | df$lat=="NULL"),] 
   
   df$speed = as.numeric(df$speed)
   
@@ -96,11 +97,12 @@ load(tmp_rdata)
 ui <- dashboardPage(
   
   #setting up shiny dashboard layout  
-  dashboardHeader(title = "Please Don't Hit Whales Dawg",titleWidth = 450),
+  dashboardHeader(title = "Whale Crossing Guard 3000",titleWidth = 450),
   #setup sidebar layout
   dashboardSidebar(
     sidebarMenu(
-      #menuitem 'whale map' which will have the map. 
+      menuItem("Report Cards", tabName = "tbl_b", icon = icon("dashboard")),
+      #menuitem 'ship map' which will have the map. 
       menuItem("AIS Map", tabName = "cinms", icon=icon("map"),startExpanded = FALSE),
       #year dropdown which uses year column
       selectInput(inputId = "ship",                                   
@@ -113,7 +115,7 @@ ui <- dashboardPage(
       #value = c(1,12)),
       
       #setup an about menuitem to explain what the data is about
-      menuItem("About", tabName = "about", icon = icon("dashboard"))
+      menuItem("About", tabName = "about", icon = icon("angellist"))
     )),
   
   #connects sidebar items with 'dashboard body' 
@@ -122,6 +124,17 @@ ui <- dashboardPage(
     tags$style(type = "text/css", "#cinms {height: calc(100vh - 80px) !important;}"),
     #tabitems need to match ones made above. i.e. "menuItem("Whale Map", tabName = "cinms" needs to match "tabItem(tabName="cinms"
     tabItems(
+      
+      tabItem(tabName="tbl_b",
+              fluidRow(
+                box(align="center",
+                    title = "Vessel report",
+                    collapsible = TRUE,
+                    #background = "blue",
+                    width = "100%",
+                    height = "2000px",tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
+                    DT::dataTableOutput('tbl_b')
+                ))),
       
       tabItem(tabName="cinms",
               fluidRow(
@@ -142,7 +155,7 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   
-  
+  output$tbl_b = DT::renderDataTable(lns)
   #whaleicon=icons("whale_icon.png")
   
   #render leaflet map
