@@ -1,4 +1,3 @@
-# libraries ----
 library(tidyverse)
 library(leaflet)
 library(RColorBrewer)
@@ -20,7 +19,7 @@ library(units)
 library(here)
 
 # db con ----
-source(here("scripts/db_connect.R"))
+#source(here("scripts/db_connect.R"))
 
 # vars ----
 dir_cache <- here("cache")
@@ -92,6 +91,12 @@ if (!file.exists(tmp_rdata)){
   save(df, pts, lns, file = tmp_rdata)
 }
 load(tmp_rdata)
+
+ship_shp <- read_sf("shiny_ships/shapefiles/ship_lane_2013.shp")
+st_crs(ship_shp)
+
+sanctuary_shp <- read_sf("shiny_ships/shapefiles/cinms1.shp")
+st_crs(sanctuary_shp)
 
 # ui ----
 ui <- dashboardPage(
@@ -177,7 +182,15 @@ server <- function(input, output, session) {
         color = ~pal1(seg_sog),
         label = ~sprintf("%0.03f km/hr on %s", seg_sog, datetime, name), group="sog") %>%
       leaflet::addLegend(
-        pal = pal1, values = ~seg_sog, title = "Speed (km/hr)")
+        pal = pal1, values = ~seg_sog, title = "Speed (km/hr)") %>% 
+      addPolygons(data = ship_shp, 
+                  fillColor = 'blue', 
+                  group = "Shipping Lane") %>% 
+      addPolygons(data = sanctuary_shp, 
+                  fillColor = 'blue', 
+                  group = "Sanctuary") %>% 
+      addLayersControl(overlayGroups = c("Shipping Lane", "Sanctuary"), 
+                       options = layersControlOptions(collapsed = T))
   })
   
 }
