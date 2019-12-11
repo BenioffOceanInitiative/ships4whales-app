@@ -48,7 +48,12 @@ get_segment <- function(p1, p2, crs=4326){
 dir.create(dir_cache, showWarnings = F)
 
 if (!file.exists(tmp_rdata)){
-  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat from ais_data WHERE datetime > '2018-11-01'")
+  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat, geom 
+                            from ais_channel_1 WHERE datetime 
+                            BETWEEN '2018-06-04 00:00:00.00' AND '2018-12-31 23:59:59.99' 
+                            OR datetime BETWEEN '2019-05-15 00:00:00.00' AND '2019-11-15 23:59:59.99'
+                            AND lon IS NOT NULL
+                            AND lat IS NOT NULL;")
 
   df=df_postgres[order(df_postgres$datetime, df_postgres$name),]
   
@@ -190,7 +195,8 @@ server <- function(input, output, session) {
                   fillColor = 'blue', 
                   group = "Sanctuary") %>% 
       addLayersControl(overlayGroups = c("Shipping Lane", "Sanctuary"), 
-                       options = layersControlOptions(collapsed = T))
+                       options = layersControlOptions(collapsed = T)) %>% 
+      hideGroup("Shipping Lane")
   })
   
 }
