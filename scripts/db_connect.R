@@ -1,11 +1,14 @@
 library(yaml)
 library(dplyr)
+library(here)
 library(RPostgres)
 library(dbplyr)
 library(glue)
 
+# https://drive.google.com/open?id=1eddyoeFO5bslUakzireH1NFh8UsGBfEY
 loc_usr <- Sys.info()[['user']]
 dir_gdata <- case_when(
+  loc_usr == "admin" ~ here("cache"),
   loc_usr == "bbest" ~ "/Volumes/GoogleDrive/My Drive/projects/ship-strike/data",
   loc_usr == "mvisalli" ~ "TODO",
   loc_usr == "seang" ~ "/Volumes/GoogleDrive/My Drive/ship-strike/data")
