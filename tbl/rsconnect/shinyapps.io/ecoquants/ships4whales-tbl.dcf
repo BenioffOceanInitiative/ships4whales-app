@@ -1,0 +1,12 @@
+name: ships4whales-tbl
+title: ships4whales-tbl
+username:
+account: ecoquants
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1446333
+bundleId: 2575232
+url: https://ecoquants.shinyapps.io/ships4whales-tbl/
+when: 1573258633.54662
+asMultiple: FALSE
+asStatic: FALSE
