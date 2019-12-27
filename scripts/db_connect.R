@@ -1,17 +1,19 @@
 library(yaml)
 library(dplyr)
 library(here)
+library(glue)
 library(RPostgres)
 library(dbplyr)
-library(glue)
 
+# copy amazon_rds.yml into 
 # https://drive.google.com/open?id=1eddyoeFO5bslUakzireH1NFh8UsGBfEY
 loc_usr <- Sys.info()[['user']]
 dir_gdata <- case_when(
-  loc_usr == "admin" ~ here("cache"),
   loc_usr == "bbest" ~ "/Volumes/GoogleDrive/My Drive/projects/ship-strike/data",
   loc_usr == "mvisalli" ~ "TODO",
-  loc_usr == "seang" ~ "/Volumes/GoogleDrive/My Drive/ship-strike/data")
+  loc_usr == "seang" ~ "/Volumes/GoogleDrive/My Drive/ship-strike/data",
+  TRUE ~ here("cache"))
+message(glue("loc_usr: {loc_usr}\ndir_gdata: {dir_gdata}"))
 
 # create database ----
 # psql -h database-1.cbh6z8ln2pdp.us-west-2.rds.amazonaws.com -U postgres
