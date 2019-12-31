@@ -19,7 +19,7 @@ library(units)
 library(here)
 
 # db con ----
-#source(here("scripts/db_connect.R"))
+source(here("scripts/db_connect.R"))
 
 # vars ----
 dir_cache <- here("cache")
@@ -48,60 +48,66 @@ get_segment <- function(p1, p2, crs=4326){
 dir.create(dir_cache, showWarnings = F)
 
 if (!file.exists(tmp_rdata)){
-  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat, geom 
-                            from ais_channel_1 WHERE datetime 
-                            BETWEEN '2018-06-04 00:00:00.00' AND '2018-12-31 23:59:59.99' 
-                            OR datetime BETWEEN '2019-05-15 00:00:00.00' AND '2019-11-15 23:59:59.99'
-                            AND lon IS NOT NULL
-                            AND lat IS NOT NULL;")
-
-  df=df_postgres[order(df_postgres$datetime, df_postgres$name),]
+  #query database for data within VSR zone date ranges
+  df_postgres <- dbGetQuery(con, "SELECT datetime, name, mmsi, speed, lon, lat 
+  FROM ais_data 
+  WHERE datetime BETWEEN 
+    '2018-06-04 00:00:00.00' AND '2018-12-31 23:59:59.99' 
+  OR datetime BETWEEN 
+    '2019-06-04 00:00:00.00' AND '2019-12-31 23:59:59.99'
+  AND lon IS NOT NULL
+  AND lat IS NOT NULL;")
   
-  df =df[!(is.na(df$lon) | df$lon=="NULL" | is.na(df$lat) | df$lat=="NULL"),] 
-  
+  #Sort by name and datetime
+  df=df_postgres[order(df_postgres$name, df_postgres$datetime),]
+  #make sure speed is numeric
   df$speed = as.numeric(df$speed)
   
+  # create points and segments (minutes, kilometers, segment km/hr, )
   pts <- df %>%
-    # filter to single vessel
-    #filter(name == c("MSC AZOV","SEALAND GUAYAQUIL", "MILLENNIUMSTAR")) %>%
     # convert to sf points tibble
     st_as_sf(coords = c("lon", "lat"), crs=4326) %>%
-    # sort by datetime
-    arrange(name) %>%
     # filter to only one point per minute to reduce weird speeds
     filter(!duplicated(round_date(datetime, unit="minute"))) %>%
     mutate(
       # get segment based on previous point
-      seg      = map2(lag(geometry), geometry, get_segment),
+      seg = map2(lag(geometry), geometry, get_segment),
       seg_mins = (datetime - lag(datetime)) %>% as.double(units = "mins"),
       seg_km   = map_dbl(seg, get_length_km),#giving warning
+      #calculated speed in kilometers/hour
       seg_kmhr = seg_km / (seg_mins / 60),
+      #calculated speed in knots
+      seg_knots = seg_kmhr * 0.539957,
+      #tells whether segment is 'new' based on being greater than 60 mins. 
       seg_new  = if_else(is.na(seg_mins) | seg_mins > 60, 1, 0),
-      #apply speed over ground to next segment
-      seg_sog = speed*1.852)
-  
+      #apply speed over ground (SOG) to next segment
+      seg_sog = speed)
   
   # setup lines
   lns <- pts %>%
     filter(seg_km <=100) %>%
     filter(!is.na(seg_sog)) %>%
     filter(seg_new == 0) %>%
-    #group_by(name) %>%
     mutate(
       seg_geom = map(seg, 1) %>% st_as_sfc(crs=4326)) %>%
-    st_set_geometry("seg_geom") 
-  
+      st_set_geometry("seg_geom") 
+  #make sure speed over ground (SOG) is numeric
   lns$seg_sog = as.numeric(lns$seg_sog)
+  
+  lns$year = format(as.Date(lns$datetime, format="%d/%m/%Y"),"%Y")
+
   
   save(df, pts, lns, file = tmp_rdata)
 }
 load(tmp_rdata)
 
-ship_shp <- read_sf("shiny_ships/shapefiles/ship_lane_2013.shp")
+#read in shapefiles for 2013 shipping lane and CINMS?
+ship_shp <- read_sf("~/ship_lane_2013.shp")
 st_crs(ship_shp)
 
-sanctuary_shp <- read_sf("shiny_ships/shapefiles/cinms1.shp")
+sanctuary_shp <- read_sf("shapefiles/cinms1.shp")
 st_crs(sanctuary_shp)
+
 
 # ui ----
 ui <- dashboardPage(
@@ -117,12 +123,11 @@ ui <- dashboardPage(
       #year dropdown which uses year column
       selectInput(inputId = "ship",                                   
                   label="Vessel:",
-                  #selected = "2018",
                   choices = sort(unique(lns$name))),
-      #sliderInput(inputId = "month",
-      # label="Month:",
-      #min = 1, max=12,
-      #value = c(1,12)),
+      checkboxGroupInput(inputId = "year",
+       label="Year:",
+       choices = sort(unique(lns$year),),
+       selected = c("2018","2019")),
       
       #setup an about menuitem to explain what the data is about
       menuItem("About", tabName = "about", icon = icon("angellist"))
@@ -172,9 +177,8 @@ server <- function(input, output, session) {
   output$cinms <- renderLeaflet({ 
     #Creates 'dynamic df' for the leaflet map, reference this 'reactive df in all code below
     cinms_map<-lns %>% 
-      filter(name==input$ship) #%>% 
-    #filter(year==input$year) #%>%  
-    # filter(month==input$month)
+      filter(name==input$ship) %>% 
+    filter(year==input$year) 
     
     #set up labels for map datapoints. There's a lot of crazy wayss to do this so...
     pal1 <- leaflet::colorNumeric(palette="Spectral", cinms_map$seg_sog, reverse=T)
@@ -183,6 +187,9 @@ server <- function(input, output, session) {
     leaflet(cinms_map) %>%
       addTiles() %>%
       addProviderTiles(providers$Esri.NatGeoWorldMap) %>% 
+      setView( lng = -119.986646
+               , lat = 34.248009
+               , zoom = 9 ) %>%
       leaflet::addPolylines(
         color = ~pal1(seg_sog),
         label = ~sprintf("%0.03f km/hr on %s", seg_sog, datetime, name), group="sog") %>%
