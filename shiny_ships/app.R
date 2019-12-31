@@ -126,7 +126,7 @@ ui <- dashboardPage(
                   choices = sort(unique(lns$name))),
       checkboxGroupInput(inputId = "year",
        label="Year:",
-       choices = sort(unique(lns$year),),
+       choices = sort(unique(lns$year)),
        selected = c("2018","2019")),
       
       #setup an about menuitem to explain what the data is about
