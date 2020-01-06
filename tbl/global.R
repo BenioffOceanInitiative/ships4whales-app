@@ -36,7 +36,7 @@ if (!file.exists(ships_csv)){
   
   write_csv(ships, ships_csv)
 }
-ships <- read_csv(ships_csv, n_max = 10386)
+#ships <- read_csv(ships_csv)
 # Warning: 6 parsing failures.
 # row  col expected          actual                                file
 # 10387 mmsi a double A.N. TILLETT    '/srv/shiny-server/cache/ships.csv'
@@ -44,5 +44,6 @@ ships <- read_csv(ships_csv, n_max = 10386)
 # 10389 mmsi a double US NAVY SHIP 92 '/srv/shiny-server/cache/ships.csv'
 # 10390 mmsi a double US WARSHIP      '/srv/shiny-server/cache/ships.csv'
 # 10391 mmsi a double US WARSHIP 92   '/srv/shiny-server/cache/ships.csv'
+ships <- read_csv(ships_csv, n_max = 10386)
 
 
