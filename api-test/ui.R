@@ -1,3 +1,5 @@
+library(shiny)
+
 shinyUI(fluidPage(
   
   titlePanel("WhaleSafe API test"),

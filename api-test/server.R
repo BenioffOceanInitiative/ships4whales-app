@@ -1,10 +1,3 @@
-library(shiny)
-library(here)
-library(glue)
-library(dplyr)
-library(sf)
-library(leaflet)
-
 shinyServer(function(input, output) {
   
   output$map <- renderLeaflet({
