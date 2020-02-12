@@ -8,6 +8,6 @@ shinyUI(fluidPage(
       verbatimTextOutput("mmsi_val")),
     
     mainPanel(
-      plotOutput("map")))
+      leafletOutput("map")))
   
 ))

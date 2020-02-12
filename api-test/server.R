@@ -9,7 +9,7 @@ shinyServer(function(input, output) {
   
   output$map <- renderLeaflet({
     
-    mmsi <- input$mmsi
+    #mmsi <- input$mmsi
     mmsi <- "248896000"
     url <- glue("http://api.ships4whales.org/ship_segments?mmsi={mmsi}")
     
