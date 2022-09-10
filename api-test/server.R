@@ -29,7 +29,7 @@ shinyServer(function(input, output) {
   })
   
   get_url <- reactive({
-    url <- "http://api.whalesafe.net/ship_segments"
+    url <- "http://api.whalesafe.com/ship_segments"
     
     q <- get_query()
     
@@ -45,7 +45,7 @@ shinyServer(function(input, output) {
     url <- get_url()
     message(glue("url: {url}"))
     
-    #url <- "http://api.ships4whales.org/ship_segments?date_beg=2019-10-01&date_end=2019-10-04"
+    #url <- "http://api.whalesafe.com/ship_segments?date_beg=2019-10-01&date_end=2019-10-04"
     #download.file(url, "test.geojson")
     d <- read_sf(url) 
     })
